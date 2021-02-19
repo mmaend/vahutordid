@@ -1,0 +1,294 @@
+package ee.vahutordid.vahutordid.controller;
+
+import java.security.Principal;
+import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+
+
+import ee.vahutordid.vahutordid.domain.*;
+import ee.vahutordid.vahutordid.domain.security.UserRole;
+import ee.vahutordid.vahutordid.service.AddressService;
+import ee.vahutordid.vahutordid.service.CartItemService;
+import ee.vahutordid.vahutordid.service.CreditCardService;
+import ee.vahutordid.vahutordid.service.ShoppingCartService;
+import ee.vahutordid.vahutordid.service.UserRoleService;
+import ee.vahutordid.vahutordid.service.UserService;
+import ee.vahutordid.vahutordid.utility.AddressCheckoutFormWrapper;
+import ee.vahutordid.vahutordid.utility.MailConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+@Controller
+public class CheckoutController {
+
+	private AddressCheckoutFormWrapper wrapper  = new AddressCheckoutFormWrapper();
+	private CreditCard currentCreditCard = new CreditCard();
+
+	@Autowired
+	private JavaMailSender mailSender;
+	
+	@Autowired
+	private MailConstructor mailConstructor;
+	
+	@Autowired
+	private UserService userService;
+	
+	@Autowired
+	private UserRoleService userRoleService;
+
+	@Autowired
+	private CartItemService cartItemService;
+
+	@Autowired
+	private AddressService addressService;
+	
+	@Autowired
+	private CreditCardService creditCardService;
+	
+	@Autowired
+	private ShoppingCartService shoppingCartService;
+
+	@RequestMapping("/checkout")
+	public String checkout(@RequestParam("shoppingCartId") Long shoppingCartId,
+			@RequestParam(value = "missingRequiredField", required = false) boolean missingRequiredField, Model model,
+			Principal principal, RedirectAttributes redirectAttributes ) {
+		User user = userService.findByUsername(principal.getName());
+		UserRole userRole = userRoleService.findByUserAndRole(user, "ROLE_CLIENT");
+		ShoppingCart shoppingCart = userRole.getShoppingCart();
+		
+
+		if (shoppingCartId != shoppingCart.getId()) {
+			return "badRequestPage";
+		}
+
+		HashSet<CartItem> cartItemList = cartItemService.findByShoppingCart(shoppingCart);
+		boolean emptyCart = false;
+		boolean notEnoughStock = false;
+		if (cartItemList.size() == 0) {
+			emptyCart = true;
+			redirectAttributes.addAttribute("emptyCart", emptyCart);
+			redirectAttributes.addAttribute("notEnoughStock", notEnoughStock);
+			return "redirect:/shoppingCart/cart2";
+		}
+
+		for (CartItem cartItem : cartItemList) {
+			if (cartItem.getProduct().getInStockNumber() < cartItem.getQty()) {
+				notEnoughStock = true;
+				redirectAttributes.addAttribute("emptyCart", emptyCart);
+				redirectAttributes.addAttribute("notEnoughStock", notEnoughStock);
+				return "redirect:/shoppingCart/cart2";
+			}
+		}
+		
+		shoppingCartService.setGrandTotal(shoppingCart);
+
+		List<Address> shippingAddressList = userRole.getUserShippingAddressList();
+		List<CreditCard> creditCardList = userRole.getCreditCardList();
+
+		model.addAttribute("userShippingList", shippingAddressList);
+		model.addAttribute("creditCardList", creditCardList);
+
+		if (creditCardList.size() == 0) {
+			model.addAttribute("emptyPaymentList", true);
+		} else {
+			model.addAttribute("emptyPaymentList", false);
+		}
+
+		if (shippingAddressList.size() == 0) {
+			model.addAttribute("emptyShippingList", true);
+		} else {
+			model.addAttribute("emptyShippingList", false);
+		}
+		
+		
+		
+
+		
+
+		for (Address ad : shippingAddressList) {
+			if (ad.isUserShippingDefault()) {
+				addressService.deepCopyAddress(ad, this.wrapper.getShippingAddress());
+			}
+		}
+
+		for (CreditCard cc : creditCardList) {
+			if (cc.isDefaultCreditCard()) {
+				creditCardService.deepCopyCreditCard(cc, this.currentCreditCard);
+				addressService.deepCopyAddress(cc.getBillingAddress(), this.wrapper.getBillingAddress());
+			}
+		}
+		
+
+		model.addAttribute("wrapper", wrapper);
+		model.addAttribute("creditCard", currentCreditCard);
+		model.addAttribute("cartItemList", cartItemList);
+		model.addAttribute("shoppingCart", shoppingCart);
+
+		model.addAttribute("classActiveShipping", true);
+
+		if (missingRequiredField) {
+			model.addAttribute("missingRequiredField", true);
+		}
+
+		return "checkout";
+
+	}
+
+	@RequestMapping(value = "/checkout", method = RequestMethod.POST)
+	public String checkoutPost(@ModelAttribute("wrapper") AddressCheckoutFormWrapper wrapper,
+			@ModelAttribute("creditCard") CreditCard creditCard,
+			@ModelAttribute("billingSameAsShipping") String billingSameAsShipping,
+			@ModelAttribute("shippingMethod") String shippingMethod, Principal principal, Model model) {
+		User user = userService.findByUsername(principal.getName());
+		UserRole userRole = userRoleService.findByUserAndRole(user, "ROLE_CLIENT");
+		ShoppingCart shoppingCart = userRole.getShoppingCart();
+		
+		Address billingAddress = wrapper.getBillingAddress();
+		Address shippingAddress = wrapper.getShippingAddress();
+	
+		HashSet<CartItem> cartItemList = cartItemService.findByShoppingCart(shoppingCart);
+		model.addAttribute("cartItemList", cartItemList);
+
+		if (billingSameAsShipping.equals("true"))
+			addressService.deepCopyAddress(shippingAddress, billingAddress);
+
+		if (shippingAddress.getStreet1().isEmpty() 
+				|| shippingAddress.getCity().isEmpty()
+				|| shippingAddress.getState().isEmpty()
+				|| shippingAddress.getReceiverName().isEmpty()
+				|| shippingAddress.getZipcode().isEmpty() 
+				|| creditCard.getCardNumber().isEmpty()
+				|| creditCard.getCvc() == 0 || billingAddress.getStreet1().isEmpty()
+				|| billingAddress.getCity().isEmpty() 
+				|| billingAddress.getState().isEmpty()
+				|| billingAddress.getZipcode().isEmpty())
+			return "redirect:/checkout?id=" + shoppingCart.getId() + "&missingRequiredField=true";
+		
+		billingAddress.setUserRole(userRole);
+		shippingAddress.setUserRole(userRole);
+		creditCard.setUserRole(userRole);
+		
+		
+		billingAddress = addressService.createAddress(billingAddress);
+		creditCard.setBillingAddress(billingAddress);
+		
+		shippingAddress = addressService.createAddress(shippingAddress);
+		creditCard = creditCardService.createCreditCard(creditCard);
+		
+		
+		
+		ClientOrder clientOrder = cartItemService.commitAndGetSale(shoppingCart, creditCard, billingAddress, shippingAddress, shippingMethod);
+		
+		mailSender.send(mailConstructor.constructOrderConfirmationEmail(user, clientOrder, Locale.ENGLISH));
+		
+		
+		
+		LocalDate today = LocalDate.now();
+		LocalDate estimatedDeliveryDate;
+		
+		if (shippingMethod.equals("groundShipping")) {
+			estimatedDeliveryDate = today.plusDays(5);
+		} else {
+			estimatedDeliveryDate = today.plusDays(3);
+		}
+		
+		model.addAttribute("estimatedDeliveryDate", estimatedDeliveryDate);
+		
+		return "orderSubmittedPage";
+	}
+
+	@RequestMapping("/setShippingAddress")
+	public String setShippingAddress(@RequestParam("shippingAddressId") Long shippingAddressId, Principal principal,
+			Model model) {
+		User user = userService.findByUsername(principal.getName());
+		UserRole userRole = userRoleService.findByUserAndRole(user, "ROLE_CLIENT");
+		ShoppingCart shoppingCart = userRole.getShoppingCart();
+		
+		Address shippingAddress = addressService.findById(shippingAddressId);
+
+		if (shippingAddress.getUserRole().getUser().getId() != user.getId()) {
+			return "badRequestPage";
+		} else {
+			addressService.deepCopyAddress(shippingAddress, this.wrapper.getShippingAddress());
+
+			HashSet<CartItem> cartItemList = cartItemService.findByShoppingCart(shoppingCart);
+
+			model.addAttribute("wrapper", wrapper);
+			model.addAttribute("creditCard", currentCreditCard);
+			model.addAttribute("cartItemList", cartItemList);
+			model.addAttribute("shoppingCart", shoppingCart);
+
+			List<Address> shippingAddressList = userRole.getUserShippingAddressList();
+			List<CreditCard> creditCardList = userRole.getCreditCardList();
+
+			model.addAttribute("shippingAddressList", shippingAddressList);
+			model.addAttribute("creditCardList", creditCardList);
+
+			model.addAttribute("classActiveShipping", true);
+			model.addAttribute("emptyShippingList", false);
+
+			if (creditCardList.size() == 0) {
+				model.addAttribute("emptyPaymentList", true);
+			} else {
+				model.addAttribute("emptyPaymentList", false);
+			}
+
+
+			return "checkout";
+		}
+	}
+
+	@RequestMapping("/setCreditCard")
+	public String setCreditCard(@RequestParam("creditCardId") Long creditCardId, Principal principal,
+			Model model) {
+		User user = userService.findByUsername(principal.getName());
+		UserRole userRole = userRoleService.findByUserAndRole(user, "ROLE_CLIENT");
+		ShoppingCart shoppingCart = userRole.getShoppingCart();
+		
+		CreditCard creditCard = creditCardService.findById(creditCardId);
+		Address billingAddress = creditCard.getBillingAddress();
+
+		if (creditCard.getUserRole().getUserRoleId() != userRole.getUserRoleId()) {
+			return "badRequestPage";
+		} else {
+			creditCardService.deepCopyCreditCard(creditCard, this.currentCreditCard);
+
+			HashSet<CartItem> cartItemList = cartItemService.findByShoppingCart(shoppingCart);
+
+			addressService.deepCopyAddress(billingAddress, this.wrapper.getBillingAddress());
+
+			model.addAttribute("wrapper", wrapper);			
+			model.addAttribute("creditCard", this.currentCreditCard);
+			model.addAttribute("cartItemList", cartItemList);
+			model.addAttribute("shoppingCart", shoppingCart);
+
+			List<Address> shippingAddressList = userRole.getUserShippingAddressList();
+			List<CreditCard> creditCardList = userRole.getCreditCardList();
+
+			model.addAttribute("shippingAddressList", shippingAddressList);
+			model.addAttribute("creditCardList", creditCardList);
+
+			model.addAttribute("classActivePayment", true);
+
+			model.addAttribute("emptyPaymentList", false);
+
+			if (shippingAddressList.size() == 0) {
+				model.addAttribute("emptyShippingList", true);
+			} else {
+				model.addAttribute("emptyShippingList", false);
+			}
+			
+			return "checkout";
+		}
+	}
+
+}
