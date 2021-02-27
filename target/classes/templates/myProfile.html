@@ -1,9 +1,16 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.w3.org/1000/xhtml">
-<head th:replace="common/header2 :: common-header" />
+<html lang="en" xmlns:th="http://www.w3.org/1999/xhtml">
 
-<body bgcolor="#E6E6FA">
-	<div th:replace="common/header2 :: navbar" />
+<head th:replace="common/common :: common-head" />
+
+<body>
+<!-- ##### Header Area Start ##### -->
+<div th:replace="common/common :: common-header" />
+<!-- ##### Header Area End ##### -->
+
+<!-- ##### Treading Post Area Start ##### -->
+<div th:replace="common/common :: treading-post-area" />
+<!-- ##### Treading Post Area End ##### -->
 
 	<div class="container-fluid">
 		<div class="row" style="margin-bottom: -100px;">
@@ -15,13 +22,9 @@
 				</h2>
 			</div>
 			<div class="col-xs-3">
-				<img src="/image/vahutordid_logo.jpg" class="img-responsive" />
+				<img src="/img/core-img/vahutordid_logo.jpg" class="img-responsive" />
 			</div>
 		</div>
-		<hr
-			style="position: absolute; width: 100%; height: 6px; background-color: #333; z-index: -1; margin-top: -80px;" />
-		<img class="img-responsive" src="/image/wood.png"
-			style="margin-top: -75px;" />
 
 		<div class="row" style="margin-top: 60px;">
 			<div class="col-xs-9 col-xs-offset-3">
@@ -606,7 +609,7 @@
 	</div>
 	<!-- end of container -->
 <div th:replace="common/header2 :: footer"/>
-
-	<div th:replace="common/header2 :: body-bottom-scripts" />
+<div th:replace="common/common :: body-bottom-scripts"/>
+<div th:replace="common/header2 :: body-bottom-scripts"/>
 </body>
 </html>

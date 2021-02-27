@@ -1,10 +1,17 @@
 
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.w3.org/1000/xhtml">
-<head th:replace="common/header2 :: common-header" />
+<html lang="en" xmlns:th="http://www.w3.org/1999/xhtml">
+
+<head th:replace="common/common :: common-head" />
 
 <body>
-	<div th:replace="common/header2 :: navbar" />
+<!-- ##### Header Area Start ##### -->
+<div th:replace="common/common :: common-header" />
+<!-- ##### Header Area End ##### -->
+
+<!-- ##### Treading Post Area Start ##### -->
+<div th:replace="common/common :: treading-post-area" />
+<!-- ##### Treading Post Area End ##### -->
 
 	<div class="container">
 		<div class="row" style="margin-bottom: -100px;">
@@ -32,5 +39,6 @@
 <div th:replace="common/header2 :: footer"/>
 
 	<div th:replace="common/header2 :: body-bottom-scripts" />
+	<div th:replace="common/common :: body-bottom-scripts" />
 </body>
 </html>

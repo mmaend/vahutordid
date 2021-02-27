@@ -83,6 +83,12 @@ public class HomeController {
 	public String hours() {
 		return "hours";
 	}
+
+
+	@RequestMapping("/about")
+	public String about() {
+		return "about";
+	}
 	
 	@RequestMapping("/faq")
 	public String faq() {

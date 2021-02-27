@@ -1,23 +1,18 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.w3.org/1000/xhtml">
-<head th:replace="common/header2 :: common-header" />
+<html lang="en" xmlns:th="http://www.w3.org/1999/xhtml">
+
+<head th:replace="common/common :: common-head" />
 
 <body>
-	<div th:replace="common/header2 :: navbar" />
+<!-- ##### Header Area Start ##### -->
+<div th:replace="common/common :: common-header" />
+<!-- ##### Header Area End ##### -->
+
+<!-- ##### Treading Post Area Start ##### -->
+<div th:replace="common/common :: treading-post-area" />
+<!-- ##### Treading Post Area End ##### -->
 
 	<div class="container">
-		
-			<div class="col-xs-2">
-				<img src="/image/vahutordid_logo.jpg" class="img-responsive" />
-			</div><div class="col-xs-3">
-				<img src="/image/21.jpg" class="img-responsive" />
-			</div>
-		</div>
-		
-		<hr
-			style="position: absolute; width: 50%; height: 1px; background-color: #333; z-index: -3; margin-top: -440px;" />
-		<img class="img-responsive" src="/image/wood.png" 
-			style="margin-top: -85px;" />
 
 		<div class="row" style="margin-top: 60px;">
 			<div class="col-xs-3">
@@ -31,10 +26,7 @@
 				</div>
 				
 			</div>
-			
-			
-			
-			
+			</div>
 
 <div class="container-fluid">
 		<div class="table-responsive">
@@ -76,13 +68,13 @@
 			</table>
 	</div></div>
 					
-		</div>	
-		
-	
-	
+		</div>
+
+
 <div th:replace="common/header2 :: footer"/>
 
-	<div th:replace="common/header2 :: body-bottom-scripts" />
+
+<div th:replace="common/common :: body-bottom-scripts"/>
 	
 	<script>
 		$(document).ready(function() {
