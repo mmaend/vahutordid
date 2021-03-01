@@ -1,6 +1,6 @@
 # vahutordid
 [Vahutordid online shop]
-Creation of my first website where the following need to be implemented:
+Creation of website where the following need to be implemented:
 
 1.Management panel for the super admin account where: 
 
